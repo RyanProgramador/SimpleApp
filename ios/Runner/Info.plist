@@ -49,6 +49,8 @@
     <string>permite ai</string>
 	<key>PermissionGroupNotification</key>
     <string>permite ai</string>
+	<key>NSCameraUsageDescription</key>
+    <string>Permite a camera ai</string>
 
 
 	<key>UILaunchStoryboardName</key>
