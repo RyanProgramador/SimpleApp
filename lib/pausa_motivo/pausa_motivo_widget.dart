@@ -9,10 +9,10 @@ import 'pausa_motivo_model.dart';
 export 'pausa_motivo_model.dart';
 
 class PausaMotivoWidget extends StatefulWidget {
-  const PausaMotivoWidget({Key? key}) : super(key: key);
+  const PausaMotivoWidget({super.key});
 
   @override
-  _PausaMotivoWidgetState createState() => _PausaMotivoWidgetState();
+  State<PausaMotivoWidget> createState() => _PausaMotivoWidgetState();
 }
 
 class _PausaMotivoWidgetState extends State<PausaMotivoWidget> {

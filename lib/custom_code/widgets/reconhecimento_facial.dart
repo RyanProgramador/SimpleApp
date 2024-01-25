@@ -7,78 +7,155 @@ import 'package:flutter/material.dart';
 // Begin custom widget code
 // DO NOT REMOVE OR MODIFY THE CODE ABOVE!
 
+import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:camera/camera.dart';
-import 'package:google_ml_kit/google_ml_kit.dart' as mlkit;
+import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:path_provider/path_provider.dart';
 
 class ReconhecimentoFacial extends StatefulWidget {
-  final double? width;
-  final double? height;
-
   const ReconhecimentoFacial({Key? key, this.width, this.height})
       : super(key: key);
+
+  final double? width;
+  final double? height;
 
   @override
   _ReconhecimentoFacialState createState() => _ReconhecimentoFacialState();
 }
 
 class _ReconhecimentoFacialState extends State<ReconhecimentoFacial> {
-  late final mlkit.CameraController _cameraController;
-  late final mlkit.FaceDetector _faceDetector;
-  bool _isDetecting = false;
-  String _resultado = '';
+  CameraController? _cameraController;
+  List<CameraDescription>? cameras;
+  XFile? _imageFile;
+  List<Face> _faces = [];
+  ui.Image? _image;
 
   @override
   void initState() {
     super.initState();
-    _inicializarCamera();
-    _faceDetector = mlkit.GoogleMlKit.vision.faceDetector(
-      mlkit.FaceDetectorOptions(
-          enableContours: false, enableClassification: false),
-    );
+    _initializeCamera();
   }
 
-  void _inicializarCamera() async {
-    final cameras = await availableCameras();
-    final camera = cameras.firstWhere(
-        (camera) => camera.lensDirection == CameraLensDirection.front);
-    _cameraController = CameraController(camera, ResolutionPreset.medium);
-    await _cameraController.initialize();
-    setState(() {});
+  Future<void> _initializeCamera() async {
+    cameras = await availableCameras();
+    if (cameras!.isNotEmpty) {
+      _cameraController =
+          CameraController(cameras![0], ResolutionPreset.medium);
+      await _cameraController!.initialize();
+      if (!mounted) return;
+      setState(() {});
+    } else {
+      print("Nenhuma câmera encontrada");
+    }
+  }
 
-    _cameraController.startImageStream((image) async {
-      if (_isDetecting) return;
-      _isDetecting = true;
-      try {
-        // Implemente a lógica de verificação do rosto aqui
-        // Por exemplo, compare o rosto detectado com os rostos permitidos
-        // e atualize o estado com "Acesso Concedido" ou "Acesso Negado"
-        _resultado = "Acesso Negado"; // Placeholder para o resultado
-      } finally {
-        _isDetecting = false;
-      }
+  Future<void> _detectFaces(XFile file) async {
+    final inputImage = InputImage.fromFilePath(file.path);
+    final faceDetector = FaceDetector(options: FaceDetectorOptions());
+    final faces = await faceDetector.processImage(inputImage);
+    setState(() {
+      _faces = faces;
     });
+    await _loadImage(file);
+    faceDetector.close();
+  }
+
+  Future<void> _loadImage(XFile file) async {
+    final data = await file.readAsBytes();
+    final image = await decodeImageFromList(data);
+    setState(() {
+      _image = image;
+    });
+  }
+
+  Future<void> _takePicture() async {
+    if (_cameraController == null || !_cameraController!.value.isInitialized) {
+      print('Erro: selecione uma câmera primeiro.');
+      return;
+    }
+
+    if (_cameraController!.value.isTakingPicture) {
+      // Uma captura está em progresso; não faça nada.
+      return;
+    }
+
+    try {
+      final XFile file = await _cameraController!.takePicture();
+      _detectFaces(file);
+      setState(() {
+        _imageFile = file;
+      });
+    } catch (e) {
+      print(e);
+    }
   }
 
   @override
   void dispose() {
-    _cameraController.dispose();
-    _faceDetector.close();
+    _cameraController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_cameraController.value.isInitialized) {
-      return Container();
-    }
-    return Column(
-      children: [
-        AspectRatio(
-          aspectRatio: _cameraController.value.aspectRatio,
-          child: CameraPreview(_cameraController),
-        ),
-        Text(_resultado),
-      ],
+    return Scaffold(
+      body: Column(
+        children: <Widget>[
+          Expanded(
+            child: _cameraController != null &&
+                    _cameraController!.value.isInitialized
+                ? AspectRatio(
+                    aspectRatio: _cameraController!.value.aspectRatio,
+                    child: CameraPreview(_cameraController!),
+                  )
+                : Center(child: CircularProgressIndicator()),
+          ),
+          _image != null && _faces.isNotEmpty
+              ? FittedBox(
+                  child: SizedBox(
+                    width: _image!.width.toDouble(),
+                    height: _image!.height.toDouble(),
+                    child: CustomPaint(
+                      painter: FacePainter(_image!, _faces),
+                    ),
+                  ),
+                )
+              : Container(),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _takePicture,
+        tooltip: 'Detectar',
+        child: Icon(Icons.camera_alt),
+      ),
     );
+  }
+}
+
+class FacePainter extends CustomPainter {
+  final ui.Image image;
+  final List<Face> faces;
+
+  FacePainter(this.image, this.faces);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawImage(image, Offset.zero, Paint());
+    for (var face in faces) {
+      final rect = face.boundingBox;
+      canvas.drawRect(
+        rect,
+        Paint()
+          ..color = Colors.red
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5.0,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
+    return false;
   }
 }
