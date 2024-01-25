@@ -68,11 +68,11 @@ class _HomePageWidgetState extends State<HomePageWidget> {
             children: [
               Expanded(
                 child: Container(
-                  width: double.infinity,
-                  height: double.infinity,
+                  width: MediaQuery.sizeOf(context).width * 1.0,
+                  height: MediaQuery.sizeOf(context).height * 1.0,
                   child: custom_widgets.ReconhecimentoFacial(
-                    width: double.infinity,
-                    height: double.infinity,
+                    width: MediaQuery.sizeOf(context).width * 1.0,
+                    height: MediaQuery.sizeOf(context).height * 1.0,
                   ),
                 ),
               ),

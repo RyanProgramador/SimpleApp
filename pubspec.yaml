@@ -28,6 +28,7 @@ dependencies:
   auto_size_text: 3.0.0
   cached_network_image: 3.2.1
   camera: ^0.10.5+9
+  camera_process: ^1.0.1
   collection: 1.17.2
   face_camera: ^0.0.9
   flutter_animate: 4.1.1+1
